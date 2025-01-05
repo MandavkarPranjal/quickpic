@@ -6,13 +6,13 @@ export const alt = "Square Image Generator - QuickPic";
 export const contentType = "image/png";
 
 export const size = {
-  width: 1200,
-  height: 630,
+    width: 1200,
+    height: 630,
 };
 
 // Image generation
 export default async function Image() {
-  return await GenerateImage({
-    title: "Square Image Generator",
-  });
+    return await GenerateImage({
+        title: "Square Image Generator",
+    });
 }
