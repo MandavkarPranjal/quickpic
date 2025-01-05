@@ -30,7 +30,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <head>
-                <PlausibleProvider domain="quickpic.vercel.app" />
+                <PlausibleProvider domain="quickpics.netlify.app" />
             </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
