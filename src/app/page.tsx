@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Home() {
     return (
         <div className="flex min-h-screen flex-col justify-between p-8 font-[family-name:var(--font-geist-sans)] sm:p-20">
-            <main className="flex flex-grow flex-col items-center justify-center">
+            <main className="flex flex-grow flex-col items-center justify-center text-center">
                 <div>
                     Hi. I&apos;m{" "}
                     <a
@@ -14,7 +14,8 @@ export default function Home() {
                     >
                         Pranjal
                     </a>
-                    . I built these tools because I was annoyed they did not exist.
+                    . I built these tools because I was annoyed they did not exist without signing in.<br />
+                    Also, I don&apos;t collect any data as cookies or anything. All the work is done on your side.
                 </div>
                 <div className="mt-4"></div>
                 <Link href="/svg-to-png" className="text-blue-500 hover:underline">
