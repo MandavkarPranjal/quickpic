@@ -15,7 +15,9 @@ export default function Home() {
                         Pranjal
                     </a>
                     . I built these tools because I was annoyed they did not exist without signing in.<br />
-                    Also, I don&apos;t collect any data as cookies or anything. All the work is done on your side.
+                    <p className="text-center text-white/60">
+                        I don&apos;t collect your data as cookies or anything. All work is done on your side.
+                    </p>
                 </div>
                 <div className="mt-4"></div>
                 <Link href="/svg-to-png" className="text-blue-500 hover:underline">
