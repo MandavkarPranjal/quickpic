@@ -19,7 +19,7 @@ export default function NotFoundPage() {
             </main>
             <footer className="mt-8 text-center text-sm text-gray-500">
                 <a
-                    href="https://github.com/MandavkarPranjal/quicklink"
+                    href="https://github.com/MandavkarPranjal/quickpic"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:underline"
