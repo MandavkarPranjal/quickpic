@@ -9,22 +9,29 @@ import {
     type FileUploaderResult,
     useFileUploader,
 } from "@/hooks/use-file-uploader";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+
+type BackgroundColor = "black" | "white" | "detected";
 
 function SquareToolCore(props: { fileUploaderProps: FileUploaderResult }) {
     const { imageContent, imageMetadata, handleFileUploadEvent, cancel } =
         props.fileUploaderProps;
 
-    const [backgroundColor, setBackgroundColor] = useLocalStorage<
-        "black" | "white"
-    >("squareTool_backgroundColor", "white");
+    const [detectedColor, setDetectedColor] = useState<string>("#FFFFFF");
+    const [backgroundColor, setBackgroundColor] = useLocalStorage<BackgroundColor>(
+        "squareTool_backgroundColor",
+        "detected"
+    );
 
     const [squareImageContent, setSquareImageContent] = useState<string | null>(
         null,
     );
 
-    useEffect(() => {
-        if (imageContent && imageMetadata) {
+    // Memoize the square image generation to prevent unnecessary recalculations
+    const generateSquareImage = useCallback(
+        (img: HTMLImageElement, bgColor: string) => {
+            if (!imageMetadata) return;
+
             const canvas = document.createElement("canvas");
             const size = Math.max(imageMetadata.width, imageMetadata.height);
             canvas.width = size;
@@ -33,23 +40,110 @@ function SquareToolCore(props: { fileUploaderProps: FileUploaderResult }) {
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
 
-            // Fill background
-            ctx.fillStyle = backgroundColor;
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, size, size);
 
-            // Load and center the image
+            const x = (size - imageMetadata.width) / 2;
+            const y = (size - imageMetadata.height) / 2;
+            ctx.drawImage(img, x, y);
+
+            setSquareImageContent(canvas.toDataURL("image/png"));
+        },
+        [imageMetadata],
+    );
+
+    useEffect(() => {
+        if (imageContent && imageMetadata) {
             const img = new Image();
             img.onload = () => {
-                const x = (size - imageMetadata.width) / 2;
-                const y = (size - imageMetadata.height) / 2;
-                ctx.drawImage(img, x, y);
-                setSquareImageContent(canvas.toDataURL("image/png"));
+                const bgColor =
+                    backgroundColor === "detected"
+                        ? detectedColor
+                        : backgroundColor;
+                generateSquareImage(img, bgColor);
             };
             img.src = imageContent;
         }
-    }, [imageContent, imageMetadata, backgroundColor]);
+    }, [imageContent, imageMetadata, backgroundColor, detectedColor, generateSquareImage]);
 
-    const handleSaveImage = () => {
+    const detectEdgeColor = useCallback((img: HTMLImageElement) => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const edgePixels: string[] = [];
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Sampling edge pixels
+        for (let i = 0; i < canvas.width; i++) {
+            // Top edge
+            const topIdx = (i + 0 * canvas.width) * 4;
+            edgePixels.push(
+                `#${data[topIdx].toString(16).padStart(2, "0")}${data[topIdx + 1]
+                    .toString(16)
+                    .padStart(2, "0")}${data[topIdx + 2].toString(16).padStart(2, "0")}`,
+            );
+
+            // Bottom edge
+            const bottomIdx = (i + (canvas.height - 1) * canvas.width) * 4;
+            edgePixels.push(
+                `#${data[bottomIdx].toString(16).padStart(2, "0")}${data[bottomIdx + 1]
+                    .toString(16)
+                    .padStart(2, "0")}${data[bottomIdx + 2]
+                        .toString(16)
+                        .padStart(2, "0")}`,
+            );
+        }
+
+        for (let i = 0; i < canvas.height; i++) {
+            // Left edge
+            const leftIdx = (0 + i * canvas.width) * 4;
+            edgePixels.push(
+                `#${data[leftIdx].toString(16).padStart(2, "0")}${data[leftIdx + 1]
+                    .toString(16)
+                    .padStart(2, "0")}${data[leftIdx + 2].toString(16).padStart(2, "0")}`,
+            );
+
+            // Right edge
+            const rightIdx = (canvas.width - 1 + i * canvas.width) * 4;
+            edgePixels.push(
+                `#${data[rightIdx].toString(16).padStart(2, "0")}${data[rightIdx + 1]
+                    .toString(16)
+                    .padStart(2, "0")}${data[rightIdx + 2]
+                        .toString(16)
+                        .padStart(2, "0")}`,
+            );
+        }
+
+        const colorCount = edgePixels.reduce(
+            (acc: Record<string, number>, color) => {
+                acc[color] = (acc[color] || 0) + 1;
+                return acc;
+            },
+            {},
+        );
+
+        const mostCommonColor = Object.entries(colorCount).reduce(
+            (a, b) => (a[1] > b[1] ? a : b),
+            ["#FFFFFF", 0],
+        )[0];
+        setDetectedColor(mostCommonColor);
+    }, []);
+
+    useEffect(() => {
+        if (imageContent) {
+            const img = new Image();
+            img.onload = () => detectEdgeColor(img);
+            img.src = imageContent;
+        }
+    }, [imageContent, detectEdgeColor]);
+
+    const handleSaveImage = useCallback(() => {
         if (squareImageContent && imageMetadata) {
             const link = document.createElement("a");
             link.href = squareImageContent;
@@ -62,7 +156,7 @@ function SquareToolCore(props: { fileUploaderProps: FileUploaderResult }) {
             link.click();
             document.body.removeChild(link);
         }
-    };
+    }, [squareImageContent, imageMetadata]);
 
     const plausible = usePlausible();
 
@@ -82,7 +176,11 @@ function SquareToolCore(props: { fileUploaderProps: FileUploaderResult }) {
         <div className="mx-auto flex max-w-2xl flex-col items-center justify-center gap-6 p-6">
             <div className="flex w-full flex-col items-center gap-4 rounded-xl p-6">
                 {squareImageContent && (
-                    <img src={squareImageContent} alt="Preview" className="mb-4" />
+                    <img
+                        src={squareImageContent}
+                        alt="Squared preview"
+                        className="mb-4"
+                    />
                 )}
                 <p className="text-lg font-medium text-white/80">
                     {imageMetadata.name}
@@ -106,13 +204,15 @@ function SquareToolCore(props: { fileUploaderProps: FileUploaderResult }) {
                 </div>
             </div>
 
-            <OptionSelector
+            <OptionSelector<BackgroundColor>
                 title="Background Color"
-                options={["white", "black"]}
+                options={["detected", "white", "black"]}
                 selected={backgroundColor}
                 onChange={setBackgroundColor}
                 formatOption={(option) =>
-                    option.charAt(0).toUpperCase() + option.slice(1)
+                    option === "detected"
+                        ? "Detected Color"
+                        : option.charAt(0).toUpperCase() + option.slice(1)
                 }
             />
 
