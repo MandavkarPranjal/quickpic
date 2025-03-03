@@ -5,6 +5,6 @@ export const metadata = {
     description: "Add noise to images. Fast and free.",
 };
 
-export default function RoundedToolPage() {
+export default function NoiseToolPage() {
     return <NoiseTool />;
 }

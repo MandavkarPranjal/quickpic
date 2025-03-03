@@ -5,6 +5,6 @@ export const metadata = {
     description: "Compress images to reduce file size. Fast and free.",
 };
 
-export default function RoundedToolPage() {
+export default function CompressToolPage() {
     return <CompressTool />;
 }

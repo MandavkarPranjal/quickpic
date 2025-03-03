@@ -5,6 +5,6 @@ export const metadata = {
     description: "Watermark your images. Quick and easy.",
 };
 
-export default function SVGToolPage() {
+export default function WatermarkToolPage() {
     return <WatermarkTool />;
 }
