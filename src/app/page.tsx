@@ -35,6 +35,9 @@ export default function Home() {
                 <Link href="/noise-image" className="text-blue-500 hover:underline">
                     Noise Image
                 </Link>
+                <Link href="/watermark-image" className="text-blue-500 hover:underline">
+                    Watermark generator
+                </Link>
             </main>
             <footer className="mt-8 text-center text-sm text-gray-500">
                 <a
