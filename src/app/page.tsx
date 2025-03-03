@@ -32,6 +32,9 @@ export default function Home() {
                 <Link href="/compress-image" className="text-blue-500 hover:underline">
                     Compress Image
                 </Link>
+                <Link href="/noise-image" className="text-blue-500 hover:underline">
+                    Noise Image
+                </Link>
             </main>
             <footer className="mt-8 text-center text-sm text-gray-500">
                 <a
