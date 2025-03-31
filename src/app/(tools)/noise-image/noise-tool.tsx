@@ -47,7 +47,7 @@ function NoiseToolCore(props: { fileUploaderProps: FileUploaderResult }) {
                         // Add random noise to RGB channels
                         for (let j = 0; j < 3; j++) {
                             const noise = (Math.random() - 0.5) * noiseIntensity;
-                            data[i + j] = Math.max(0, Math.min(255, data[i + j] + noise));
+                            data[i + j] = Math.max(0, Math.min(255, data[i + j]! + noise));
                         }
                     }
 

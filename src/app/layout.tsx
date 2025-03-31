@@ -1,42 +1,31 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import PlausibleProvider from "next-plausible";
 
-const geistSans = localFont({
-    src: "./fonts/GeistVF.woff",
-    variable: "--font-geist-sans",
-    weight: "100 900",
-});
-const geistMono = localFont({
-    src: "./fonts/GeistMonoVF.woff",
-    variable: "--font-geist-mono",
-    weight: "100 900",
-});
-
-export const metadata: Metadata = {
-    title: "QuickPic - Quick Tools For Images",
-    description: "A bunch of simple tools for images. All free. No BS.",
-    icons: {
-        icon: "/favicon.svg",
-    },
+export const metadata = {
+    title: "QuickPic - Quick Image Tools",
+    description: "Quick and easy image tools",
 };
 
 export default function RootLayout({
     children,
-}: Readonly<{
+}: {
     children: React.ReactNode;
-}>) {
+}) {
     return (
         <html lang="en">
             <head>
-                <PlausibleProvider domain="quickpics.vercel.app" />
+                <link href="https://fonts.googleapis.com/css2?family=Limelight&family=UnifrakturMaguntia&family=Fascinate&family=Schoolbell&display=swap" rel="stylesheet" />
+                <style>
+                    {`
+                    @font-face {
+                        font-family: 'Sour Gummy';
+                        src: url('https://fonts.cdnfonts.com/css/sour-gummy') format('woff2');
+                    }
+                    `}
+                </style>
+                <PlausibleProvider domain="quickpic.pranjal.me" />
             </head>
-            <body
-                className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
-            >
-                {children}
-            </body>
+            <body>{children}</body>
         </html>
     );
 }
