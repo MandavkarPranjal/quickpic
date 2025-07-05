@@ -3,11 +3,14 @@
 import { usePlausible } from "next-plausible";
 import { UploadBox } from "@/components/shared/upload-box";
 import { FileDropzone } from "@/components/shared/file-dropzone";
+import { OptionSelector } from "@/components/shared/option-selector";
+import { SliderSelector } from "@/components/slider-selector";
 import {
     type FileUploaderResult,
     useFileUploader,
 } from "@/hooks/use-file-uploader";
 import { useEffect, useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 const FONTS = [
     { name: 'Limelight', value: 'Limelight' },
@@ -22,11 +25,31 @@ function BlurToolCore(props: { fileUploaderProps: FileUploaderResult }) {
         props.fileUploaderProps;
 
     const [blurredImageContent, setBlurredImageContent] = useState<string | null>(null);
-    const [blurLevel, setBlurLevel] = useState<number>(5);
-    const [overlayText, setOverlayText] = useState<string>("Your Text Here");
-    const [textSize, setTextSize] = useState<number>(48);
-    const [textColor, setTextColor] = useState<string>("#ffffff");
-    const [selectedFont, setSelectedFont] = useState<string>("Limelight");
+    const [blurLevel, setBlurLevel] = useLocalStorage<number>("blurTool_blurLevel", 5);
+    const [isCustomBlur, setIsCustomBlur] = useState(false);
+    const [overlayText, setOverlayText] = useLocalStorage<string>("blurTool_overlayText", "Your Text Here");
+    const [textSize, setTextSize] = useLocalStorage<number>("blurTool_textSize", 48);
+    const [isCustomSize, setIsCustomSize] = useState(false);
+    const [textColor, setTextColor] = useLocalStorage<string>("blurTool_textColor", "#ffffff");
+    const [selectedFont, setSelectedFont] = useLocalStorage<string>("blurTool_selectedFont", "Limelight");
+
+    const handleBlurChange = (value: number | "custom") => {
+        if (value === "custom") {
+            setIsCustomBlur(true);
+        } else {
+            setBlurLevel(value);
+            setIsCustomBlur(false);
+        }
+    };
+
+    const handleSizeChange = (value: number | "custom") => {
+        if (value === "custom") {
+            setIsCustomSize(true);
+        } else {
+            setTextSize(value);
+            setIsCustomSize(false);
+        }
+    };
 
     useEffect(() => {
         if (imageContent && imageMetadata) {
@@ -79,9 +102,9 @@ function BlurToolCore(props: { fileUploaderProps: FileUploaderResult }) {
             link.href = blurredImageContent;
             const originalFileName = imageMetadata.name;
             const fileNameWithoutExtension =
-                originalFileName.substring(0, originalFileName.lastIndexOf(".")) || originalFileName;
+                originalFileName.substring(0, originalFileName.lastIndexOf(".")) ?? originalFileName;
             const fileExtension = originalFileName.split('.').pop();
-            link.download = `${fileNameWithoutExtension}-blurred.${fileExtension || 'jpg'}`;
+            link.download = `${fileNameWithoutExtension}-blurred.${fileExtension ?? 'jpg'}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -106,88 +129,81 @@ function BlurToolCore(props: { fileUploaderProps: FileUploaderResult }) {
         <div className="mx-auto flex max-w-2xl flex-col items-center justify-center gap-6 p-6">
             <div className="flex w-full flex-col items-center gap-4 rounded-xl p-6">
                 {blurredImageContent && (
-                    <img src={blurredImageContent} alt="Preview" className="mb-4 max-w-full" />
+                    <div className="relative w-full max-w-lg">
+                        <img 
+                            src={blurredImageContent} 
+                            alt="Preview" 
+                            className="w-full h-auto rounded-lg"
+                            style={{ maxHeight: "400px", objectFit: "contain" }}
+                        />
+                    </div>
                 )}
                 <p className="text-lg font-medium text-white/80">
                     {imageMetadata.name}
                 </p>
-                <div className="w-full max-w-md space-y-4">
-                    <div>
-                        <label htmlFor="blur-slider" className="block mb-2 text-sm font-medium text-white/80">
-                            Blur Level: {blurLevel}px
-                        </label>
-                        <input
-                            id="blur-slider"
-                            type="range"
-                            min="0"
-                            max="20"
-                            value={blurLevel}
-                            onChange={(e) => setBlurLevel(Number(e.target.value))}
-                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
+            </div>
 
-                    <div>
-                        <label htmlFor="text-input" className="block mb-2 text-sm font-medium text-white/80">
-                            Overlay Text
-                        </label>
-                        <input
-                            id="text-input"
-                            type="text"
-                            value={overlayText}
-                            onChange={(e) => setOverlayText(e.target.value)}
-                            className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white"
-                        />
-                    </div>
+            <div className="flex flex-col items-center rounded-lg bg-white/5 p-3">
+                <span className="text-sm text-white/60">Original Size</span>
+                <span className="font-medium text-white">
+                    {imageMetadata.width} × {imageMetadata.height}
+                </span>
+            </div>
 
-                    <div>
-                        <label htmlFor="font-select" className="block mb-2 text-sm font-medium text-white/80">
-                            Font Style
-                        </label>
-                        <select
-                            id="font-select"
-                            value={selectedFont}
-                            onChange={(e) => setSelectedFont(e.target.value)}
-                            className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white"
-                            style={{ fontFamily: selectedFont }}
-                        >
-                            {FONTS.map((font) => (
-                                <option 
-                                    key={font.value} 
-                                    value={font.value}
-                                    style={{ fontFamily: font.value }}
-                                >
-                                    {font.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+            <SliderSelector
+                title="Blur Level"
+                options={[0, 2, 5, 10, 15, 20]}
+                selected={isCustomBlur ? "custom" : blurLevel}
+                onChange={handleBlurChange}
+                customValue={blurLevel}
+                onCustomValueChange={setBlurLevel}
+                min={0}
+                max={50}
+                unit="px"
+                placeholder="Enter blur"
+            />
 
-                    <div>
-                        <label htmlFor="text-size" className="block mb-2 text-sm font-medium text-white/80">
-                            Text Size: {textSize}px
-                        </label>
-                        <input
-                            id="text-size"
-                            type="range"
-                            min="12"
-                            max="120"
-                            value={textSize}
-                            onChange={(e) => setTextSize(Number(e.target.value))}
-                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
+            <SliderSelector
+                title="Text Size"
+                options={[12, 24, 36, 48, 72, 96]}
+                selected={isCustomSize ? "custom" : textSize}
+                onChange={handleSizeChange}
+                customValue={textSize}
+                onCustomValueChange={setTextSize}
+                min={8}
+                max={200}
+                unit="px"
+                placeholder="Enter size"
+            />
 
-                    <div>
-                        <label htmlFor="text-color" className="block mb-2 text-sm font-medium text-white/80">
-                            Text Color
-                        </label>
+            <OptionSelector
+                title="Font Style"
+                options={FONTS.map(font => font.value)}
+                selected={selectedFont}
+                onChange={setSelectedFont}
+                formatOption={(option) => FONTS.find(f => f.value === option)?.name ?? option}
+            />
+
+            <div className="flex flex-col items-center gap-3 w-full max-w-md">
+                <div className="flex flex-col gap-2 w-full">
+                    <label className="text-sm text-white/60 text-center">Overlay Text</label>
+                    <input
+                        type="text"
+                        value={overlayText}
+                        onChange={(e) => setOverlayText(e.target.value)}
+                        className="w-full px-4 py-2 bg-white/5 rounded-lg text-white text-center border border-white/10 focus:border-blue-500 focus:outline-none transition-colors"
+                        placeholder="Enter your text here"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2 w-full">
+                    <label className="text-sm text-white/60 text-center">Text Color</label>
+                    <div className="flex justify-center">
                         <input
-                            id="text-color"
                             type="color"
                             value={textColor}
                             onChange={(e) => setTextColor(e.target.value)}
-                            className="w-full h-10 bg-gray-700 rounded-lg cursor-pointer"
+                            className="w-16 h-10 bg-white/5 rounded-lg cursor-pointer border border-white/10"
                         />
                     </div>
                 </div>
