@@ -20,6 +20,9 @@ export default function Home() {
                     </p>
                 </div>
                 <div className="mt-4"></div>
+                <Link href="/gradient-generator" className="text-blue-500 hover:underline">
+                    Gradient Generator
+                </Link>
                 <Link href="/ico-generator" className="text-blue-500 hover:underline">
                     ICO Generator
                 </Link>
