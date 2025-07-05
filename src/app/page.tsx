@@ -20,6 +20,12 @@ export default function Home() {
                     </p>
                 </div>
                 <div className="mt-4"></div>
+                <Link href="/ico-generator" className="text-blue-500 hover:underline">
+                    ICO Generator
+                </Link>
+                <Link href="/png-to-jpg" className="text-blue-500 hover:underline">
+                    PNG to JPG Converter
+                </Link>
                 <Link href="/svg-to-png" className="text-blue-500 hover:underline">
                     SVG to PNG converter
                 </Link>
