@@ -63,43 +63,129 @@ function IcoGeneratorToolCore(props: { fileUploaderProps: FileUploaderResult }) 
         );
     };
 
-    const generateFavicon = () => {
-        if (!imageContent || !imageMetadata) return;
+    const canvasToIco = (canvas: HTMLCanvasElement): Promise<Blob> => {
+        return new Promise((resolve) => {
+            canvas.toBlob((pngBlob) => {
+                if (!pngBlob) {
+                    resolve(new Blob());
+                    return;
+                }
+
+                // Convert PNG to ICO format
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const pngData = new Uint8Array(reader.result as ArrayBuffer);
+                    const icoData = createIcoFromPng(pngData, canvas.width);
+                    resolve(new Blob([icoData], { type: 'image/x-icon' }));
+                };
+                reader.readAsArrayBuffer(pngBlob);
+            }, "image/png");
+        });
+    };
+
+    const createIcoFromPng = (pngData: Uint8Array, size: number): Uint8Array => {
+        // ICO file header (6 bytes)
+        const header = new Uint8Array([
+            0x00, 0x00, // Reserved (must be 0)
+            0x01, 0x00, // Type (1 = ICO)
+            0x01, 0x00  // Number of images (1)
+        ]);
+
+        // ICO directory entry (16 bytes)
+        const sizeBytes = size === 256 ? 0 : size; // 256 is represented as 0 in ICO
+        const directory = new Uint8Array([
+            sizeBytes,    // Width
+            sizeBytes,    // Height  
+            0x00,         // Color palette (0 = no palette)
+            0x00,         // Reserved
+            0x01, 0x00,   // Color planes (1)
+            0x20, 0x00,   // Bits per pixel (32)
+            ...new Uint8Array(new Uint32Array([pngData.length]).buffer), // Size of PNG data (little endian)
+            ...new Uint8Array(new Uint32Array([22]).buffer) // Offset to PNG data (little endian)
+        ]);
+
+        // Combine header + directory + PNG data
+        const ico = new Uint8Array(header.length + directory.length + pngData.length);
+        ico.set(header, 0);
+        ico.set(directory, header.length);
+        ico.set(pngData, header.length + directory.length);
+
+        return ico;
+    };
+
+    const generateFavicon = async () => {
+        if (!imageContent || !imageMetadata || selectedSizes.length === 0) return;
 
         const image = new Image();
-        image.onload = () => {
-            // Use the largest selected size for the favicon
-            const size = Math.max(...selectedSizes);
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            if (!ctx) return;
-
-            canvas.width = size;
-            canvas.height = size;
-
-            // Fill with transparent background
-            ctx.clearRect(0, 0, size, size);
-
-            // Draw the image scaled to fit the square
-            const scale = Math.min(size / image.width, size / image.height);
-            const scaledWidth = image.width * scale;
-            const scaledHeight = image.height * scale;
-            const x = (size - scaledWidth) / 2;
-            const y = (size - scaledHeight) / 2;
-
-            ctx.drawImage(image, x, y, scaledWidth, scaledHeight);
-
-            // Download as PNG (works as favicon)
-            const link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
+        image.onload = async () => {
             const originalFileName = imageMetadata.name;
             const fileNameWithoutExtension =
                 originalFileName.substring(0, originalFileName.lastIndexOf(".")) || originalFileName;
-            link.download = `${fileNameWithoutExtension}-favicon.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+
+            if (selectedSizes.length === 1) {
+                // Single dimension: download as .ico
+                const size = selectedSizes[0]!;
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                if (!ctx) return;
+
+                canvas.width = size;
+                canvas.height = size;
+                ctx.clearRect(0, 0, size, size);
+
+                const scale = Math.min(size / image.width, size / image.height);
+                const scaledWidth = image.width * scale;
+                const scaledHeight = image.height * scale;
+                const x = (size - scaledWidth) / 2;
+                const y = (size - scaledHeight) / 2;
+
+                ctx.drawImage(image, x, y, scaledWidth, scaledHeight);
+
+                const blob = await canvasToIco(canvas);
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${fileNameWithoutExtension}-${size}x${size}.ico`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            } else {
+                // Multiple dimensions: download as .zip
+                const JSZip = (await import("jszip")).default;
+                const zip = new JSZip();
+
+                for (const size of selectedSizes) {
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+
+                    if (!ctx) continue;
+
+                    canvas.width = size;
+                    canvas.height = size;
+                    ctx.clearRect(0, 0, size, size);
+
+                    const scale = Math.min(size / image.width, size / image.height);
+                    const scaledWidth = image.width * scale;
+                    const scaledHeight = image.height * scale;
+                    const x = (size - scaledWidth) / 2;
+                    const y = (size - scaledHeight) / 2;
+
+                    ctx.drawImage(image, x, y, scaledWidth, scaledHeight);
+
+                    const blob = await canvasToIco(canvas);
+                    zip.file(`${fileNameWithoutExtension}-${size}x${size}.ico`, blob);
+                }
+
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = `${fileNameWithoutExtension}-favicons.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            }
         };
         image.src = imageContent;
     };
@@ -177,9 +263,9 @@ function IcoGeneratorToolCore(props: { fileUploaderProps: FileUploaderResult }) 
                     Cancel
                 </button>
                 <button
-                    onClick={() => {
+                    onClick={async () => {
                         plausible("ico-generator");
-                        generateFavicon();
+                        await generateFavicon();
                     }}
                     disabled={selectedSizes.length === 0}
                     className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-md transition-colors duration-200 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed"
